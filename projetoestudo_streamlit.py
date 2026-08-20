@@ -12,6 +12,7 @@ Original file is located at
 # ETAPA 1 - CONFIGURAÇÃO INICIAL
 # ============================================================
 
+
 import os
 import re
 import json
@@ -6212,6 +6213,7 @@ print(
 
 print("=" * 70)
 
+
 from pptx import Presentation
 
 print("python-pptx OK")
@@ -8641,29 +8643,82 @@ valor_reajustado_14 = sum(
 
 
 # ============================================================
-# CALCULAR CENÁRIOS CC E SC DIRETAMENTE DA MATRIZ
+# CALCULAR CENÁRIOS CC E SC
 # ============================================================
 
-cenarios_escolhidos_14 = list(estado.get("cenarios_escolhidos", []))[:4]
+quantidade_cenarios_14 = min(
+    len(
+        estado.get(
+            "cenarios_escolhidos",
+            []
+        )
+    ),
+    3
+)
 
 
-def calcular_totais_estado_14(modalidade):
+linhas_cc_14 = [
+    13,
+    16,
+    19,
+    22,
+]
+
+
+linhas_sc_14 = [
+    14,
+    17,
+    20,
+    23,
+]
+
+
+def calcular_totais_cenarios_14(
+    linhas_custos
+):
+
     totais = []
-    cenarios_modalidade = estado.get("cenarios", {}).get(modalidade, {})
-    for nome_cenario in cenarios_escolhidos_14:
-        dados_cenario = cenarios_modalidade.get(nome_cenario, {})
-        produtos = list(dados_cenario.get("produtos", []))
+
+    for linha_custo in linhas_custos[
+        :quantidade_cenarios_14
+    ]:
+
         total = 0.0
-        for indice_produto, vidas in enumerate(vidas_produtos_14):
-            produto = produtos[indice_produto] if indice_produto < len(produtos) else {}
-            custo = numero_14(produto.get("custo_medio", produto.get("per_capita", 0.0)))
+
+        for indice_produto in range(10):
+
+            coluna_produto = (
+                3 + indice_produto
+            )
+
+            custo = numero_14(
+                ws_planos.cell(
+                    linha_custo,
+                    coluna_produto
+                ).value
+            )
+
+            vidas = vidas_produtos_14[
+                indice_produto
+            ]
+
             total += vidas * custo
+
         totais.append(total)
+
+    while len(totais) < 3:
+        totais.append(0.0)
+
     return totais
 
 
-totais_cc_14 = calcular_totais_estado_14("com_coparticipacao")
-totais_sc_14 = calcular_totais_estado_14("sem_coparticipacao")
+totais_cc_14 = calcular_totais_cenarios_14(
+    linhas_cc_14
+)
+
+totais_sc_14 = calcular_totais_cenarios_14(
+    linhas_sc_14
+)
 
 
 wb.close()
@@ -9380,26 +9435,106 @@ for linha_custo in LINHAS_CUSTO_ANALISE_15:
 
 
 # ============================================================
-# IDENTIFICAR CENÁRIOS DIRETAMENTE NO ESTADO DA MATRIZ
+# IDENTIFICAR CENÁRIOS NA ABA PLANOS
 # ============================================================
 
-nomes_cenarios_15 = list(estado.get("cenarios_escolhidos", []))[:4]
+linhas_players_15 = [
+    4,
+    5,
+    6,
+]
 
 
-def montar_matriz_financeira_estado_15(modalidade):
+linhas_custo_cc_15 = [
+    13,
+    16,
+    19,
+]
+
+
+linhas_custo_sc_15 = [
+    14,
+    17,
+    20,
+]
+
+
+nomes_cenarios_15 = []
+
+produtos_cenarios_15 = []
+
+
+for linha_player in linhas_players_15:
+
+    nome = limpar_texto_15(
+        ws_planos.cell(
+            linha_player,
+            2
+        ).value
+    )
+
+    nomes_cenarios_15.append(
+        nome
+    )
+
+    produtos_player = []
+
+    for coluna in range(
+        3,
+        13
+    ):
+
+        produtos_player.append(
+            limpar_texto_15(
+                ws_planos.cell(
+                    linha_player,
+                    coluna
+                ).value
+            )
+        )
+
+    produtos_cenarios_15.append(
+        produtos_player
+    )
+
+
+# ============================================================
+# MONTAR MATRIZ FINANCEIRA
+# ============================================================
+
+def montar_matriz_financeira_15(
+    linhas_custos_cenarios
+):
+
     registros = []
-    cenarios_modalidade = estado.get("cenarios", {}).get(modalidade, {})
 
     for indice_produto in range(10):
-        vidas = vidas_produtos_15[indice_produto]
-        produto_atual = produtos_atuais_15[indice_produto]
-        custo_atual = custos_atuais_15[indice_produto]
-        fator = fatores_reajuste_15[indice_produto]
-        custo_reajuste = custo_atual * fator
+
+        vidas = vidas_produtos_15[
+            indice_produto
+        ]
+
+        produto_atual = produtos_atuais_15[
+            indice_produto
+        ]
+
+        custo_atual = custos_atuais_15[
+            indice_produto
+        ]
+
+        fator = fatores_reajuste_15[
+            indice_produto
+        ]
+
+        custo_reajuste = (
+            custo_atual * fator
+        )
 
         opcoes = [
             {
-                "player": limpar_texto_15(estado.get("operadora_atual", "Atual")),
+                "player": limpar_texto_15(
+                    ws_planos["B3"].value
+                ),
                 "produto": produto_atual,
                 "vidas": vidas,
                 "custo": custo_atual,
@@ -9414,27 +9549,50 @@ def montar_matriz_financeira_estado_15(modalidade):
             },
         ]
 
-        for nome_cenario in nomes_cenarios_15:
-            dados = cenarios_modalidade.get(nome_cenario, {})
-            produtos = list(dados.get("produtos", []))
-            produto = produtos[indice_produto] if indice_produto < len(produtos) else {}
-            nome_produto = limpar_texto_15(produto.get("plano", produto.get("produto", "-"))) or "-"
-            custo = numero_15(produto.get("custo_medio", produto.get("per_capita", 0.0)))
+        for indice_cenario, linha_custo in enumerate(
+            linhas_custos_cenarios
+        ):
+
+            produto_cenario = (
+                produtos_cenarios_15[
+                    indice_cenario
+                ][
+                    indice_produto
+                ]
+            )
+
+            custo_cenario = numero_15(
+                ws_planos.cell(
+                    linha_custo,
+                    3 + indice_produto
+                ).value
+            )
+
             opcoes.append({
-                "player": nome_cenario,
-                "produto": nome_produto,
+                "player": nomes_cenarios_15[
+                    indice_cenario
+                ],
+                "produto": produto_cenario,
                 "vidas": vidas,
-                "custo": custo,
-                "total": vidas * custo,
+                "custo": custo_cenario,
+                "total": vidas * custo_cenario,
             })
 
-        registros.append({"indice": indice_produto + 1, "opcoes": opcoes})
+        registros.append({
+            "indice": indice_produto + 1,
+            "opcoes": opcoes,
+        })
 
     return registros
 
 
-matriz_cc_15 = montar_matriz_financeira_estado_15("com_coparticipacao")
-matriz_sc_15 = montar_matriz_financeira_estado_15("sem_coparticipacao")
+matriz_cc_15 = montar_matriz_financeira_15(
+    linhas_custo_cc_15
+)
+
+matriz_sc_15 = montar_matriz_financeira_15(
+    linhas_custo_sc_15
+)
 
 
 wb.close()
