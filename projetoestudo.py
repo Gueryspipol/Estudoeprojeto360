@@ -10305,9 +10305,9 @@ import os
 for arquivo in sorted(os.listdir()):
     if arquivo.lower().endswith(".pptx"):
         print(arquivo)
+# from google.colab import files
 
-from google.colab import files
+# files.download(
+#     "Apresentador360_V2_FINAL.pptx"
+# )
 
-files.download(
-    "Apresentador360_V2_FINAL.pptx"
-)
